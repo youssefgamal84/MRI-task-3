@@ -345,11 +345,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def showKSpace(self, img):
         img = img[:]
-        img = np.abs(img)
-        img = 20*np.log(img)
-        img = img - np.min(img)
-        img = img * (255 / np.max(img))
-        img = np.round(img)
+        # img = np.abs(img)
+        img = 20*np.log(np.abs(img))
+
         qimg = qimage2ndarray.array2qimage(np.abs(img))
         self.ui.kspaceLbl.setPixmap(QPixmap(qimg))
 
