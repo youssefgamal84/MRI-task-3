@@ -341,11 +341,24 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # for i in range(0, self.phantomSize):
         #     kSpace[:, i] = np.fft.fft(kSpace[:, i])
         kSpace = np.fft.fft2(kSpace)
-        self.showKSpace(kSpace)
+        self.showReconstructedImage(kSpace)
 
     def showKSpace(self, img):
-        # img = img[:]
-        # img = img * (255 / np.max(img))
+        img = img[:]
+        img = np.abs(img)
+        img = 20*np.log(img)
+        img = img - np.min(img)
+        img = img * (255 / np.max(img))
+        img = np.round(img)
+        qimg = qimage2ndarray.array2qimage(np.abs(img))
+        self.ui.kspaceLbl.setPixmap(QPixmap(qimg))
+
+    def showReconstructedImage(self,img):
+        img = img[:]
+        img = np.abs(img)
+        img = img - np.min(img)
+        img = img * (255 / np.max(img))
+        img = np.round(img)
         qimg = qimage2ndarray.array2qimage(np.abs(img))
         self.ui.kspaceLbl.setPixmap(QPixmap(qimg))
 
