@@ -455,11 +455,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.error('Choose a phantom first')
         else:
             self.ui.tabWidget.setCurrentIndex(1)
-            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'GRE':
+            if self.ui.acqBox.currentText() == 'GRE':
                 threading.Thread(target=self.GRE_reconstruct_image).start()
-            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SSFP':
+            if self.ui.acqBox.currentText() == 'SSFP':
                 threading.Thread(target=self.SSFP_reconstruct_image).start()
-            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SE':
+            if self.ui.acqBox.currentText() == 'SE':
                 threading.Thread(target=self.SE_image_reconstruct).start()
 
             return
@@ -477,7 +477,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         print(vectors[30, 10])
 
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
 
         for i in range(0, round(self.phantomSize)):
             rotatedMatrix = rotateX(vectors, self.FA)
@@ -525,7 +530,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # vectors[:, :, 0] = 0
         # vectors[:, :, 1] = 0
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
         print(vectors[30, 10])
 
         vectors = rotateX(vectors, self.FA)
@@ -564,7 +574,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
 
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
 
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
