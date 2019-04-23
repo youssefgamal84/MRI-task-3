@@ -14,6 +14,7 @@ import pyqtgraph as pg
 from PyQt5.QtWidgets import QFileDialog
 from math import sin, cos, pi
 import csv
+import sk_dsp_comm.sigsys as ss  #pip install sk_dsp_comm
 
 MAX_CONTRAST = 2
 MIN_CONTRAST = 0.1
@@ -34,6 +35,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.comboSheppSize.currentTextChanged.connect(self.showPhantom)
         self.ui.comboViewMode.currentTextChanged.connect(self.changePhantomMode)
         self.ui.startSeq.clicked.connect(self.runSequence)
+        self.ui.showGraphics.clicked.connect(self.plotGraph)
         self.ui.FlipAngle.textChanged.connect(self.setFA)
         self.ui.TimeEcho.textChanged.connect(self.setTE)
         self.ui.TimeRepeat.textChanged.connect(self.setTR)
@@ -288,6 +290,140 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         t1graph.plot(np.exp(-t / T1) * self.cosFA + 1 - np.exp(-t / T1), pen=pg.mkPen(color))
         t2gragh.plot(self.sinFA * np.exp(-t / T2), pen=pg.mkPen(color))
 
+    #     plotting the graphical representaion of the sequence
+    def plotGraph(self, fangle = 90):
+        self.ui.tabWidget.setCurrentIndex(3)
+        self.graphicRep = self.ui.graphicsRep
+        self.graphicRep.setRange(xRange=[-10,50])
+        self.graphicRep.setRange(yRange=[0,8])
+        
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'GRE':
+            print(1)
+            self.drawRf(1.5,1,0,0,10)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SSFP':
+            print(2)
+            self.drawRf(1.5,1,0,0,10)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SE':
+            print(3)
+            self.drawRf(1.5,1.5,1,0,20,5)
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'GRE':
+            print(4)
+            self.drawRf(1,-1,1,0,5,5)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SSFP':
+            print(5)
+            self.drawRf(1,-1,1,0,5,5)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SE':
+            print(6)
+            self.drawRf(1,-1,1.5,1,5,10,(10/3))
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'GRE':
+            print(7)
+            self.drawRf(0,1,0,0,10)
+            self.drawSin()
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'SSFP':
+            print(8)
+            self.drawRf(0,1,0,0,10)
+            self.drawSin()
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'SE':
+            print(9)
+            self.drawRf(0,1.5,1,0,20,5)
+            self.drawSin()
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+
+
+
+        ## RF pulse
+
+ 
+
+    def drawGx(self, angle1 = 0.5, angle2 = 0.5, dist1 = 0, dist2 = 0):
+        tx = np.arange(-100,100,.01)
+        x_rect = ss.rect(tx-20,5)
+        x_rect = x_rect*angle1
+        self.graphicRep.plot(tx+dist1,x_rect+1,pen=pg.mkPen('g'))
+        tx = np.arange(-100,100,.01)
+        x_rect = ss.rect(tx-20,5)
+        x_rect = x_rect*angle2
+        if angle2 != 0:
+            self.graphicRep.plot(tx+dist2,x_rect+1,pen=pg.mkPen('g'))
+
+
+    def drawGy(self, angle1 = 0.5, angle2 = 0.5, dist = 0):
+        ty = np.arange(-100,100,.01)
+        x_rect = ss.rect(ty-14,5)
+        x_rect = x_rect*angle1
+        self.graphicRep.plot(ty,x_rect+2,pen=pg.mkPen('b'))
+        ty = np.arange(-100,100,.01)
+        x_rect = ss.rect(ty-14,5)
+        x_rect = x_rect*angle2
+        if angle2 != 0:
+            self.graphicRep.plot(ty+dist,x_rect+2,pen=pg.mkPen('b'))
+
+    def drawGz(self, angle1 = 0.5, angle2 = 0.5, dist = 0):
+        tz = np.arange(-100,100,.01)
+        x_rect = ss.rect(tz-8,5)
+        x_rect = x_rect * angle1
+        self.graphicRep.plot(tz,x_rect+3,pen=pg.mkPen('r'))
+        tz = np.arange(-50,100,.01)
+        x_rect = ss.rect(tz-8,5)
+        x_rect = x_rect * angle2
+        if angle2 != 0:
+            self.graphicRep.plot(tz+dist+8,x_rect+3,pen=pg.mkPen('r'))
+
+
+    def drawRf(self, angle1 = 1, angle2 = 1, angle3 = 1, angle4 = 1, dist1 = 0, dist2 = 0, dist3 = 0 ):
+        self.graphicRep.clear()
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle1
+        self.graphicRep.plot(t,x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle2
+        self.graphicRep.plot(t+dist1,x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle3
+        self.graphicRep.plot(t+(2*dist2),x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle4
+        self.graphicRep.plot(t+(3*dist3),x_tri+4, pen=pg.mkPen('y'))
+
+
+    def drawSin(self):
+        t = np.arange(0,3,.01)
+        x = np.sin(2*pi*t)
+        x = 0.5*x
+        self.graphicRep.plot(t,x+4, pen=pg.mkPen('y'))
+
+
+
     def setFA(self, value):
         print(value)
         try:
@@ -318,7 +454,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.img is None:
             self.error('Choose a phantom first')
         else:
-            threading.Thread(target=self.GRE_reconstruct_image).start()
+            self.ui.tabWidget.setCurrentIndex(1)
+            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'GRE':
+                threading.Thread(target=self.GRE_reconstruct_image).start()
+            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SSFP':
+                threading.Thread(target=self.SSFP_reconstruct_image).start()
+            if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SE':
+                threading.Thread(target=self.SE_image_reconstruct).start()
+
             return
 
     def GRE_reconstruct_image(self):
