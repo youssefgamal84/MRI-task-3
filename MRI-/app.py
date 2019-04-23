@@ -43,6 +43,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.phantomlbl.setMouseTracking(False)
         self.ui.phantomlbl.mouseMoveEvent = self.editContrastAndBrightness
         self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
+        self.ui.phantomlbl.wheelEvent = self.zoomInOut
 
         # Scaling
 
@@ -60,6 +61,11 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.PD = None
         self.T1 = None
         self.T2 = None
+        self.inversion_time = 4.3
+        self.T2_prep_time = 2
+        self.TAG_frequency = 7
+        self.cycles_number = 10
+        self.zoomLevel = 0
         self.phantomSize = 512
 
         self.FA = 90
@@ -112,17 +118,32 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.phantomSize = size
         self.ui.phantomlbl.phantomSize = size
         img = phantom(size)
+        self.PD = img
         img = img * 255
         self.img = img
-        self.PD = img
         self.T1 = phantom(size, 'T1')
         self.T2 = phantom(size, 'T2')
         self.originalPhantom = img
         self.pixelsClicked = [(0, 0), [0, 0], [0, 0]]
-        self.showPhantomImage()
+        self.showPhantomImage(self.img)
 
-    def showPhantomImage(self):
-        self.qimg = qimage2ndarray.array2qimage(self.img)
+    def zoomInOut(self, event):
+        direction = event.angleDelta().y() > 0
+        if direction:
+            self.zoomLevel = self.zoomLevel + 1
+        else:
+            self.zoomLevel = self.zoomLevel - 1
+        # constraints
+        if self.zoomLevel < 0:
+            self.zoomLevel = 0
+        elif self.zoomLevel > self.phantomSize -5:
+            self.zoomLevel = self.phantomSize-5
+
+        img = self.img[0 + self.zoomLevel:-self.zoomLevel, 0 + self.zoomLevel:-self.zoomLevel]
+        self.showPhantomImage(img)
+
+    def showPhantomImage(self, img):
+        self.qimg = qimage2ndarray.array2qimage(img)
         # self.ui.phantomlbl.setAlignment(QtCore.Qt.AlignCenter)
         # self.ui.phantomlbl.setFixedWidth(self.phantomSize)
         # self.ui.phantomlbl.setFixedHeight(self.phantomSize)
@@ -174,7 +195,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.img = self.img + self.brightness
         self.img = np.clip(self.img, 0, 255)
-        self.showPhantomImage()
+        self.showPhantomImage(self.img)
 
         self.lastY = currentPositionY
         self.lastX = currentPositionX
@@ -297,23 +318,26 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.img is None:
             self.error('Choose a phantom first')
         else:
-            threading.Thread(target=self.reconstructImage).start()
+            threading.Thread(target=self.GRE_reconstruct_image).start()
             return
 
-    def reconstructImage(self):
+    def GRE_reconstruct_image(self):
         kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
         vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
+        vectors[:, :, 2] = 1
 
         # To be Removed
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
 
-        vectors = rotateX(vectors, self.cosFA, self.sinFA)
-        vectors = recovery(vectors, self.T1, self.TR,self.PD)
+        print(vectors[30, 10])
 
-        for i in range(0, self.phantomSize):
-            rotatedMatrix = rotateX(vectors, self.cosFA, self.sinFA)
+        vectors = self.startup_cycles(vectors)
+        vectors = self.TAG_prep(vectors)
+
+        for i in range(0, round(self.phantomSize)):
+            rotatedMatrix = rotateX(vectors, self.FA)
             decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
 
             for j in range(0, self.phantomSize):
@@ -343,15 +367,123 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
 
+    def SSFP_reconstruct_image(self):
+        kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
+        vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
+        vectors[:, :, 2] = 1
+
+        # To be Removed
+        for i in range(0, self.phantomSize):
+            for j in range(0, self.phantomSize):
+                vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
+        print(vectors[30, 10])
+        # vectors = rotateX(vectors, self.FA)
+        # vectors = recovery(vectors, self.T1, self.TR, self.PD)
+        # vectors[:, :, 0] = 0
+        # vectors[:, :, 1] = 0
+        vectors = self.startup_cycles(vectors)
+        vectors = self.TAG_prep(vectors)
+        print(vectors[30, 10])
+
+        vectors = rotateX(vectors, self.FA)
+        for i in range(0, round(self.phantomSize)):
+            rotatedMatrix = vectors
+            decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
+
+            for j in range(0, self.phantomSize):
+                stepX = (360 / self.phantomSize) * i
+                stepY = (360 / self.phantomSize) * j
+                phaseEncodedMatrix = gradientXY(decayedRotatedMatrix, stepY, stepX)
+                sigmaX = np.sum(phaseEncodedMatrix[:, :, 0])
+                sigmaY = np.sum(phaseEncodedMatrix[:, :, 1])
+                valueToAdd = np.complex(sigmaX, sigmaY)
+                kSpace[i, j] = valueToAdd
+
+            self.showKSpace(kSpace)
+            print(i)
+            if i % 2 == 0:
+                vectors = rotateX(rotatedMatrix, -1 * self.FA * 2)
+            else:
+                vectors = rotateX(rotatedMatrix, self.FA * 2)
+
+        kSpace = np.fft.fftshift(kSpace)
+        kSpace = np.fft.fft2(kSpace)
+        self.showReconstructedImage(kSpace)
+
+    def SE_image_reconstruct(self):
+        kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
+        vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
+        vectors[:, :, 2] = 1
+
+        # To be Removed
+        for i in range(0, self.phantomSize):
+            for j in range(0, self.phantomSize):
+                vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
+
+        vectors = self.startup_cycles(vectors)
+        vectors = self.TAG_prep(vectors)
+
+        for i in range(0, self.phantomSize):
+            for j in range(0, self.phantomSize):
+                stepX = (360 / self.phantomSize) * i
+                stepY = (360 / self.phantomSize) * j
+                rotatedMatrix = rotateX(vectors, 90)
+                rotatedMatrix = gradientXY(rotatedMatrix, stepY, 0)
+                decayedMatrix = decay(rotatedMatrix, self.T2, self.TE / 2)
+                spinEcho = rotateX(decayedMatrix, 180)
+                spinEcho = gradientXY(spinEcho, 0, stepX)
+                sigmaX = np.sum(spinEcho[:, :, 0])
+                sigmaY = np.sum(spinEcho[:, :, 1])
+                valueToAdd = np.complex(sigmaX, sigmaY)
+                kSpace[i, j] = valueToAdd
+            self.showKSpace(kSpace)
+            spinEcho[:, :, 0] = 0
+            spinEcho[:, :, 1] = 0
+            vectors = recovery(spinEcho, self.T1, self.TR, self.PD)
+
+        kSpace = np.fft.fft2(kSpace)
+        self.showReconstructedImage(kSpace)
+
+    def TI_Prep(self, vectors):
+        vectors = rotateX(vectors, 180)
+        vectors = recovery(vectors, self.T1, self.inversion_time, self.PD)
+        vectors[:, :, 0] = 0
+        vectors[:, :, 1] = 0
+        return vectors
+
+    def T2_prep(self, vectors):
+        vectors = rotateX(vectors, 90)
+        vectors = decay(vectors, self.T2, self.T2_prep_time)
+        vectors = rotateX(vectors, -90)
+        return vectors
+
+    def TAG_prep(self, vectors):
+        t = range(0, self.phantomSize)
+        t = np.sin(t)
+        for i in range(0, self.phantomSize):
+            if (i % self.TAG_frequency == 0):
+                for j in range(0, self.phantomSize):
+                    vectors[i, j] = np.dot(vectors[i, j], t[j])
+        return vectors
+
+    def startup_cycles(self, vectors):
+        for i in range(0, self.cycles_number):
+            vectors = rotateX(vectors, self.FA)
+            vectors = recovery(vectors, self.T1, self.TR, self.PD)
+            vectors = decay(vectors, self.T2, self.TR)
+            vectors[:, :, 0] = 0
+            vectors[:, :, 1] = 0
+        return vectors
+
     def showKSpace(self, img):
         img = img[:]
         # img = np.abs(img)
-        img = 20*np.log(np.abs(img))
+        img = 20 * np.log(np.abs(img))
 
         qimg = qimage2ndarray.array2qimage(np.abs(img))
         self.ui.kspaceLbl.setPixmap(QPixmap(qimg))
 
-    def showReconstructedImage(self,img):
+    def showReconstructedImage(self, img):
         img = img[:]
         img = np.abs(img)
         img = img - np.min(img)

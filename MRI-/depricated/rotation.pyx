@@ -2,7 +2,10 @@ import numpy as np
 from math import sin, cos, pi
 
 
-def rotateX(matrix, cosFA, sinFA):
+def rotateX(matrix, FA):
+    FA = FA * (pi / 180)
+    cosFA = cos(FA)
+    sinFA = sin(FA)
     shape = np.shape(matrix)
     rows = shape[0]
     cols = shape[1]
