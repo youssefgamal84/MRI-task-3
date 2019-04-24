@@ -240,141 +240,123 @@
           <string>Pulse Sequence</string>
          </attribute>
          <layout class="QGridLayout" name="gridLayout">
-          <item row="0" column="0">
-           <widget class="QToolBox" name="toolBox">
-            <property name="currentIndex">
-             <number>1</number>
+          <item row="0" column="1">
+           <widget class="QGroupBox" name="groupBox">
+            <property name="title">
+             <string>Preparation and Acquisition</string>
             </property>
-            <widget class="QWidget" name="page">
-             <property name="geometry">
-              <rect>
-               <x>0</x>
-               <y>0</y>
-               <width>531</width>
-               <height>492</height>
-              </rect>
-             </property>
-             <attribute name="label">
-              <string>Preparation</string>
-             </attribute>
-             <layout class="QFormLayout" name="formLayout">
-              <item row="0" column="0">
-               <widget class="QComboBox" name="prepSelc">
-                <item>
-                 <property name="text">
-                  <string>Inversion</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>T2prep</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>Tagging</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QLabel" name="InvTimeText">
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>20</height>
-                 </size>
-                </property>
+            <layout class="QFormLayout" name="formLayout">
+             <item row="0" column="0">
+              <widget class="QComboBox" name="prepSelc">
+               <item>
                 <property name="text">
-                 <string>Inversion Time</string>
+                 <string>Inversion</string>
                 </property>
-               </widget>
-              </item>
-              <item row="3" column="0">
-               <widget class="QLineEdit" name="Invtime"/>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLineEdit" name="T2prep">
-                <property name="maximumSize">
-                 <size>
-                  <width>150</width>
-                  <height>200</height>
-                 </size>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="0">
-               <widget class="QLineEdit" name="spacingSW"/>
-              </item>
-              <item row="5" column="1">
-               <widget class="QLabel" name="label_4">
+               </item>
+               <item>
                 <property name="text">
-                 <string/>
+                 <string>T2prep</string>
                 </property>
-               </widget>
-              </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="T2prepText">
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>20</height>
-                 </size>
-                </property>
+               </item>
+               <item>
                 <property name="text">
-                 <string>T2 time</string>
+                 <string>Tagging</string>
                 </property>
-               </widget>
-              </item>
-              <item row="4" column="0">
-               <widget class="QLabel" name="spacingText">
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>20</height>
-                 </size>
-                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="7" column="0">
+              <widget class="QLineEdit" name="Invtime">
+               <property name="text">
+                <string>4.3</string>
+               </property>
+              </widget>
+             </item>
+             <item row="15" column="0">
+              <widget class="QComboBox" name="acqBox">
+               <property name="maximumSize">
+                <size>
+                 <width>200</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <item>
                 <property name="text">
-                 <string>Spacing of sin wave</string>
+                 <string>GRE</string>
                 </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-            <widget class="QWidget" name="page_2">
-             <property name="geometry">
-              <rect>
-               <x>0</x>
-               <y>0</y>
-               <width>531</width>
-               <height>461</height>
-              </rect>
-             </property>
-             <attribute name="label">
-              <string>Acquisition</string>
-             </attribute>
-             <layout class="QGridLayout" name="gridLayout_2">
-              <item row="1" column="0">
-               <widget class="QComboBox" name="acqBox">
-                <item>
-                 <property name="text">
-                  <string>GRE</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>SSFP</string>
-                 </property>
-                </item>
-                <item>
-                 <property name="text">
-                  <string>SE</string>
-                 </property>
-                </item>
-               </widget>
-              </item>
-             </layout>
-            </widget>
+               </item>
+               <item>
+                <property name="text">
+                 <string>SSFP</string>
+                </property>
+               </item>
+               <item>
+                <property name="text">
+                 <string>SE</string>
+                </property>
+               </item>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="InvTimeText">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Inversion Time</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0">
+              <widget class="QLabel" name="T2prepText">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>T2 time</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="0">
+              <widget class="QLineEdit" name="T2prep">
+               <property name="maximumSize">
+                <size>
+                 <width>150</width>
+                 <height>200</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>2</string>
+               </property>
+              </widget>
+             </item>
+             <item row="10" column="0">
+              <widget class="QLabel" name="spacingText">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>Spacing of sin wave</string>
+               </property>
+              </widget>
+             </item>
+             <item row="11" column="0">
+              <widget class="QLineEdit" name="spacingSW">
+               <property name="text">
+                <string>7</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
          </layout>
@@ -408,7 +390,7 @@
      </widget>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0">
+     <layout class="QHBoxLayout" name="horizontalLayout_15" stretch="0,0,0,0,0,0,0,0,0,0,0,0,0,0,0">
       <property name="sizeConstraint">
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
@@ -482,6 +464,26 @@
         </property>
        </spacer>
       </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Start up cycles</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLineEdit" name="startCyc">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="text">
+         <string>10</string>
+        </property>
+       </widget>
+      </item>
       <item alignment="Qt::AlignRight">
        <widget class="QLabel" name="label_13">
         <property name="text">
@@ -493,9 +495,12 @@
        <widget class="QLineEdit" name="TimeEcho">
         <property name="maximumSize">
          <size>
-          <width>40</width>
-          <height>15</height>
+          <width>50</width>
+          <height>20</height>
          </size>
+        </property>
+        <property name="text">
+         <string>0.001</string>
         </property>
        </widget>
       </item>
@@ -527,8 +532,11 @@
         <property name="maximumSize">
          <size>
           <width>40</width>
-          <height>15</height>
+          <height>20</height>
          </size>
+        </property>
+        <property name="text">
+         <string>0.5</string>
         </property>
        </widget>
       </item>
@@ -560,8 +568,11 @@
         <property name="maximumSize">
          <size>
           <width>40</width>
-          <height>15</height>
+          <height>20</height>
          </size>
+        </property>
+        <property name="text">
+         <string>90</string>
         </property>
        </widget>
       </item>
