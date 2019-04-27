@@ -14,6 +14,7 @@ import pyqtgraph as pg
 from PyQt5.QtWidgets import QFileDialog
 from math import sin, cos, pi
 import csv
+import sk_dsp_comm.sigsys as ss  #pip install sk_dsp_comm
 
 MAX_CONTRAST = 2
 MIN_CONTRAST = 0.1
@@ -33,12 +34,19 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # Actions
         self.ui.comboSheppSize.currentTextChanged.connect(self.showPhantom)
         self.ui.comboViewMode.currentTextChanged.connect(self.changePhantomMode)
+        self.ui.prepSelc.currentTextChanged.connect(self.showFeatPrep)
+        self.ui.Invtime.show()
+        self.ui.InvTimeText.show()
+        self.ui.spacingSW.hide()
+        self.ui.spacingText.hide()
+        self.ui.T2prep.hide()
+        self.ui.T2prepText.hide()
         self.ui.startSeq.clicked.connect(self.runSequence)
+        self.ui.showGraphics.clicked.connect(self.plotGraph)
         self.ui.FlipAngle.textChanged.connect(self.setFA)
         self.ui.TimeEcho.textChanged.connect(self.setTE)
         self.ui.TimeRepeat.textChanged.connect(self.setTR)
         self.ui.btnBrowse.clicked.connect(self.browse)
-
         # Mouse Events
         self.ui.phantomlbl.setMouseTracking(False)
         self.ui.phantomlbl.mouseMoveEvent = self.editPosition
@@ -128,6 +136,30 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.originalPhantom = img
         self.pixelsClicked = [(0, 0), [0, 0], [0, 0]]
         self.showPhantomImage(self.img)
+
+    def showFeatPrep(self):
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            self.ui.Invtime.hide()
+            self.ui.InvTimeText.hide()
+            self.ui.spacingSW.hide()
+            self.ui.spacingText.hide()
+            self.ui.T2prep.show()
+            self.ui.T2prepText.show()
+        if self.ui.prepSelc.currentText() == 'Inversion':
+            self.ui.Invtime.show()
+            self.ui.InvTimeText.show()
+            self.ui.spacingSW.hide()
+            self.ui.spacingText.hide()
+            self.ui.T2prep.hide()
+            self.ui.T2prepText.hide()
+        if self.ui.prepSelc.currentText() == 'Tagging':
+            self.ui.Invtime.hide()
+            self.ui.InvTimeText.hide()
+            self.ui.spacingSW.show()
+            self.ui.spacingText.show()
+            self.ui.T2prep.hide()
+            self.ui.T2prepText.hide()
+
 
     def zoomInOut(self, event):
         direction = event.angleDelta().y() > 0
@@ -335,6 +367,149 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         t1graph.plot(np.exp(-t / T1) * self.cosFA + 1 - np.exp(-t / T1), pen=pg.mkPen(color))
         t2gragh.plot(self.sinFA * np.exp(-t / T2), pen=pg.mkPen(color))
 
+    #     plotting the graphical representaion of the sequence
+    def plotGraph(self):
+        self.ui.tabWidget.setCurrentIndex(3)
+        self.graphicRep = self.ui.graphicsRep
+        self.graphicRep.setRange(xRange=[-10,50])
+        self.graphicRep.setRange(yRange=[0,8])
+
+        if self.ui.FlipAngle.text() != '':
+            FA = int(self.ui.FlipAngle.text())
+            FA = FA/90
+            print(FA)
+        else:
+            FA = 1
+            print(FA)
+
+        
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'GRE':
+            print(1)
+            self.drawRf(2,FA,0,0,10)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SSFP':
+            print(2)
+            self.drawRf(2,FA,0,0,10)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'SE':
+            print(3)
+            self.drawRf(2,2,FA,0,20,5)
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'GRE':
+            print(4)
+            self.drawRf(1,-1,FA,0,5,5)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SSFP':
+            print(5)
+            self.drawRf(1,-1,FA,0,5,5)
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SE':
+            print(6)
+            self.drawRf(1,-1,2,FA,5,10,(10/3))
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'GRE':
+            print(7)
+            self.drawRf(0,FA,0,0,10)
+            self.drawSin()
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,0,0)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'SSFP':
+            print(8)
+            self.drawRf(0,FA,0,0,10)
+            self.drawSin()
+            self.drawGz(.5,0,0)
+            self.drawGy(.5,-.5,10)
+            self.drawGx(.5,-.5,-1,4)
+        if self.ui.prepSelc.currentText() == 'Tagging' and self.ui.acqBox.currentText() == 'SE':
+            print(9)
+            self.drawRf(0,2,FA  ,0,20,5)
+            self.drawSin()
+            self.drawGz(.5,.5,3)
+            self.drawGy(.5,0,0)
+            self.drawGx(.5,.5,-6,4)
+
+
+
+        ## RF pulse
+
+ 
+
+    def drawGx(self, angle1 = 0.5, angle2 = 0.5, dist1 = 0, dist2 = 0):
+        tx = np.arange(-100,100,.01)
+        x_rect = ss.rect(tx-20,5)
+        x_rect = x_rect*angle1
+        self.graphicRep.plot(tx+dist1,x_rect+1,pen=pg.mkPen('g'))
+        tx = np.arange(-100,100,.01)
+        x_rect = ss.rect(tx-20,5)
+        x_rect = x_rect*angle2
+        if angle2 != 0:
+            self.graphicRep.plot(tx+dist2,x_rect+1,pen=pg.mkPen('g'))
+
+
+    def drawGy(self, angle1 = 0.5, angle2 = 0.5, dist = 0):
+        ty = np.arange(-100,100,.01)
+        x_rect = ss.rect(ty-14,5)
+        x_rect = x_rect*angle1
+        self.graphicRep.plot(ty,x_rect+2,pen=pg.mkPen('b'))
+        ty = np.arange(-100,100,.01)
+        x_rect = ss.rect(ty-14,5)
+        x_rect = x_rect*angle2
+        if angle2 != 0:
+            self.graphicRep.plot(ty+dist,x_rect+2,pen=pg.mkPen('b'))
+
+    def drawGz(self, angle1 = 0.5, angle2 = 0.5, dist = 0):
+        tz = np.arange(-100,100,.01)
+        x_rect = ss.rect(tz-8,5)
+        x_rect = x_rect * angle1
+        self.graphicRep.plot(tz,x_rect+3,pen=pg.mkPen('r'))
+        tz = np.arange(-50,100,.01)
+        x_rect = ss.rect(tz-8,5)
+        x_rect = x_rect * angle2
+        if angle2 != 0:
+            self.graphicRep.plot(tz+dist+8,x_rect+3,pen=pg.mkPen('r'))
+
+
+    def drawRf(self, angle1 = 1, angle2 = 1, angle3 = 1, angle4 = 1, dist1 = 0, dist2 = 0, dist3 = 0 ):
+        self.graphicRep.clear()
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle1
+        self.graphicRep.plot(t,x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle2
+        self.graphicRep.plot(t+dist1,x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle3
+        self.graphicRep.plot(t+(2*dist2),x_tri+4, pen=pg.mkPen('y'))
+        t = np.arange(-50,100,.01)
+        x_tri = ss.tri(t+2,0.2)
+        x_tri = x_tri * angle4
+        self.graphicRep.plot(t+(3*dist3),x_tri+4, pen=pg.mkPen('y'))
+
+
+    def drawSin(self):
+        t = np.arange(0,3,.01)
+        x = np.sin(2*pi*t)
+        x = 0.5*x
+        self.graphicRep.plot(t,x+4, pen=pg.mkPen('y'))
+
+
+
     def setFA(self, value):
         print(value)
         try:
@@ -365,7 +540,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.img is None:
             self.error('Choose a phantom first')
         else:
-            threading.Thread(target=self.GRE_reconstruct_image).start()
+            self.ui.tabWidget.setCurrentIndex(1)
+            if self.ui.acqBox.currentText() == 'GRE':
+                threading.Thread(target=self.GRE_reconstruct_image).start()
+            if self.ui.acqBox.currentText() == 'SSFP':
+                threading.Thread(target=self.SSFP_reconstruct_image).start()
+            if self.ui.acqBox.currentText() == 'SE':
+                threading.Thread(target=self.SE_image_reconstruct).start()
+
             return
 
     def GRE_reconstruct_image(self):
@@ -381,7 +563,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         print(vectors[30, 10])
 
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
 
         for i in range(0, round(self.phantomSize)):
             rotatedMatrix = rotateX(vectors, self.FA)
@@ -429,7 +616,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # vectors[:, :, 0] = 0
         # vectors[:, :, 1] = 0
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
         print(vectors[30, 10])
 
         vectors = rotateX(vectors, self.FA)
@@ -468,7 +660,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
 
         vectors = self.startup_cycles(vectors)
-        vectors = self.TAG_prep(vectors)
+        if self.ui.prepSelc.currentText() == 'T2prep':
+            vectors = self.T2_prep(vectors)
+        elif self.ui.prepSelc.currentText() == 'Tagging':
+            vectors = self.TAG_prep(vectors)
+        else:
+            vectors = self.TI_Prep(vectors)
 
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
@@ -493,6 +690,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def TI_Prep(self, vectors):
         vectors = rotateX(vectors, 180)
+        if self.ui.Invtime.text() != '':
+            self.inversion_time = float(self.ui.Invtime.text())
         vectors = recovery(vectors, self.T1, self.inversion_time, self.PD)
         vectors[:, :, 0] = 0
         vectors[:, :, 1] = 0
@@ -500,6 +699,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
     def T2_prep(self, vectors):
         vectors = rotateX(vectors, 90)
+        if self.ui.T2prep.text() != '':
+            self.T2_prep_time = int(self.ui.T2prep.text())
         vectors = decay(vectors, self.T2, self.T2_prep_time)
         vectors = rotateX(vectors, -90)
         return vectors
@@ -507,6 +708,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
     def TAG_prep(self, vectors):
         t = range(0, self.phantomSize)
         t = np.sin(t)
+        if self.ui.spacingSW.text() != '':
+            self.TAG_frequency = self.ui.spacingSW.text()
         for i in range(0, self.phantomSize):
             if (i % self.TAG_frequency == 0):
                 for j in range(0, self.phantomSize):
@@ -514,6 +717,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         return vectors
 
     def startup_cycles(self, vectors):
+        if self.ui.startCyc.text() != '':
+            self.cycles_number = int(self.ui.startCyc.text())
         for i in range(0, self.cycles_number):
             vectors = rotateX(vectors, self.FA)
             vectors = recovery(vectors, self.T1, self.TR, self.PD)
