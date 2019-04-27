@@ -41,7 +41,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         # Mouse Events
         self.ui.phantomlbl.setMouseTracking(False)
-        self.ui.phantomlbl.mouseMoveEvent = self.editContrastAndBrightness
+        self.ui.phantomlbl.mouseMoveEvent = self.editPosition
         self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
         self.ui.phantomlbl.wheelEvent = self.zoomInOut
 
@@ -66,6 +66,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.TAG_frequency = 7
         self.cycles_number = 10
         self.zoomLevel = 0
+        self.rowOffset = 0
+        self.colOffset = 0  # to control the position of a Zoomed In picture
         self.phantomSize = 512
 
         self.FA = 90
@@ -136,11 +138,27 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         # constraints
         if self.zoomLevel < 0:
             self.zoomLevel = 0
-        elif self.zoomLevel > self.phantomSize -5:
-            self.zoomLevel = self.phantomSize-5
+            self.rowOffset = 0
+            self.colOffset = 0
+        elif self.zoomLevel > self.phantomSize / 2:
+            self.zoomLevel = int(self.phantomSize / 2)
 
-        img = self.img[0 + self.zoomLevel:-self.zoomLevel, 0 + self.zoomLevel:-self.zoomLevel]
+        self.offsetCorrection()
+
+        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
+              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
         self.showPhantomImage(img)
+
+    def offsetCorrection(self):
+        # Sanity Check
+        if self.rowOffset > self.zoomLevel:
+            self.rowOffset = self.zoomLevel
+        if self.colOffset > self.zoomLevel:
+            self.colOffset = self.zoomLevel
+        if self.rowOffset < -self.zoomLevel:
+            self.rowOffset = -self.zoomLevel
+        if self.colOffset < -self.zoomLevel:
+            self.colOffset = -1 * self.zoomLevel
 
     def showPhantomImage(self, img):
         self.qimg = qimage2ndarray.array2qimage(img)
@@ -162,7 +180,35 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.originalPhantom = self.img
         self.showPhantomImage()
 
-    def editContrastAndBrightness(self, event):
+    def editPosition(self, event):
+        if self.lastX is None:
+            self.lastX = event.pos().x()
+        if self.lastY is None:
+            self.lastY = event.pos().y()
+            return
+
+        currentPositionX = event.pos().x()
+        if currentPositionX > self.lastX:
+            self.colOffset -= 1
+        elif currentPositionX < self.lastX:
+            self.colOffset += 1
+
+        currentPositionY = event.pos().y()
+        if currentPositionY > self.lastY:
+            self.rowOffset -= 1
+        elif currentPositionY < self.lastY:
+            self.rowOffset += 1
+
+        self.offsetCorrection()
+
+        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
+              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
+        self.showPhantomImage(img)
+
+        self.lastY = currentPositionY
+        self.lastX = currentPositionX
+
+    def editBrightnessAndContrast(self, event):
         if self.lastX is None:
             self.lastX = event.pos().x()
         if self.lastY is None:
@@ -195,7 +241,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.img = self.img + self.brightness
         self.img = np.clip(self.img, 0, 255)
-        self.showPhantomImage(self.img)
+        img = self.img[0 + self.zoomLevel:-self.zoomLevel - 1, 0 + self.zoomLevel:-self.zoomLevel - 1]
+        self.showPhantomImage(img)
 
         self.lastY = currentPositionY
         self.lastX = currentPositionX
