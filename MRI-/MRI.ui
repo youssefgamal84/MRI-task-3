@@ -36,6 +36,13 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
+         <widget class="QCheckBox" name="linkZoom">
+          <property name="text">
+           <string>Zoom linking</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_13">
           <item>
            <widget class="QPushButton" name="btnSheppCreate">
@@ -160,7 +167,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tabGraph">
          <attribute name="title">
@@ -619,8 +626,31 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuSelect">
+    <property name="title">
+     <string>Select</string>
+    </property>
+    <addaction name="actionDrag_2"/>
+    <addaction name="actionBrightness_Contrast"/>
+   </widget>
+   <addaction name="menuSelect"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionDrag">
+   <property name="text">
+    <string>Drag</string>
+   </property>
+  </action>
+  <action name="actionDrag_2">
+   <property name="text">
+    <string>Drag</string>
+   </property>
+  </action>
+  <action name="actionBrightness_Contrast">
+   <property name="text">
+    <string>Brightness &amp; Contrast</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

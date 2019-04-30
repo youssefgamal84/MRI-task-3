@@ -22,6 +22,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_12.setObjectName("horizontalLayout_12")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.linkZoom = QtWidgets.QCheckBox(self.centralwidget)
+        self.linkZoom.setObjectName("linkZoom")
+        self.horizontalLayout.addWidget(self.linkZoom)
         self.horizontalLayout_13 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_13.setObjectName("horizontalLayout_13")
         self.btnSheppCreate = QtWidgets.QPushButton(self.centralwidget)
@@ -241,18 +244,30 @@ class Ui_MainWindow(object):
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1133, 22))
         self.menubar.setObjectName("menubar")
+        self.menuSelect = QtWidgets.QMenu(self.menubar)
+        self.menuSelect.setObjectName("menuSelect")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
+        self.actionDrag = QtWidgets.QAction(MainWindow)
+        self.actionDrag.setObjectName("actionDrag")
+        self.actionDrag_2 = QtWidgets.QAction(MainWindow)
+        self.actionDrag_2.setObjectName("actionDrag_2")
+        self.actionBrightness_Contrast = QtWidgets.QAction(MainWindow)
+        self.actionBrightness_Contrast.setObjectName("actionBrightness_Contrast")
+        self.menuSelect.addAction(self.actionDrag_2)
+        self.menuSelect.addAction(self.actionBrightness_Contrast)
+        self.menubar.addAction(self.menuSelect.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MRI Sequence Simulator"))
+        self.linkZoom.setText(_translate("MainWindow", "Zoom linking"))
         self.btnSheppCreate.setText(_translate("MainWindow", "Shepp-Logan"))
         self.comboSheppSize.setItemText(0, _translate("MainWindow", "32"))
         self.comboSheppSize.setItemText(1, _translate("MainWindow", "64"))
@@ -293,6 +308,10 @@ class Ui_MainWindow(object):
         self.TimeRepeat.setText(_translate("MainWindow", "0.5"))
         self.label_15.setText(_translate("MainWindow", "FA"))
         self.FlipAngle.setText(_translate("MainWindow", "90"))
+        self.menuSelect.setTitle(_translate("MainWindow", "Select"))
+        self.actionDrag.setText(_translate("MainWindow", "Drag"))
+        self.actionDrag_2.setText(_translate("MainWindow", "Drag"))
+        self.actionBrightness_Contrast.setText(_translate("MainWindow", "Brightness & Contrast"))
 
 from pyqtgraph import PlotWidget
 
