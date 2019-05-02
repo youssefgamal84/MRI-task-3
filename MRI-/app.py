@@ -14,6 +14,7 @@ import pyqtgraph as pg
 from PyQt5.QtWidgets import QFileDialog
 from math import sin, cos, pi
 import csv
+from ernst import ernst_angle
 import sk_dsp_comm.sigsys as ss  # pip install sk_dsp_comm
 
 MAX_CONTRAST = 2
@@ -49,9 +50,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.btnBrowse.clicked.connect(self.browse)
         # Mouse Events
         self.ui.phantomlbl.setMouseTracking(False)
-        self.ui.phantomlbl.mouseMoveEvent = self.editPosition
+        self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
         self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
-        self.ui.phantomlbl.wheelEvent = self.zoomInOut
+        self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
 
         # Scaling
 
@@ -73,9 +74,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.T2_prep_time = 2
         self.TAG_frequency = 7
         self.cycles_number = 10
-        self.zoomLevel = 0
-        self.rowOffset = 0
-        self.colOffset = 0  # to control the position of a Zoomed In picture
         self.phantomSize = 512
 
         self.FA = 90
@@ -88,14 +86,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.pixelsClicked = [(0, 0), (0, 0), (0, 0)]
         self.pixelSelector = 0
-
-        # For Mouse moving, changing Brightness and Contrast
-        self.lastY = None
-        self.lastX = None
-
-        # For Contrast Control
-        self.contrast = 1.0
-        self.brightness = 0
 
     def browse(self):
         # Open Browse Window & Check
@@ -131,11 +121,15 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.PD = img
         img = img * 255
         self.img = img
+        self.ui.phantomlbl.setImg(self.img)
         self.T1 = phantom(size, 'T1')
         self.T2 = phantom(size, 'T2')
         self.originalPhantom = img
         self.pixelsClicked = [(0, 0), [0, 0], [0, 0]]
         self.showPhantomImage(self.img)
+
+    def showPhantomImage(self, img):
+        self.ui.phantomlbl.showPhantomImage(img)
 
     def showFeatPrep(self):
         if self.ui.prepSelc.currentText() == 'T2prep':
@@ -160,44 +154,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.ui.T2prep.hide()
             self.ui.T2prepText.hide()
 
-    def zoomInOut(self, event):
-        direction = event.angleDelta().y() > 0
-        if direction:
-            self.zoomLevel = self.zoomLevel + 1
-        else:
-            self.zoomLevel = self.zoomLevel - 1
-        # constraints
-        if self.zoomLevel < 0:
-            self.zoomLevel = 0
-            self.rowOffset = 0
-            self.colOffset = 0
-        elif self.zoomLevel > self.phantomSize / 2:
-            self.zoomLevel = int(self.phantomSize / 2)
-
-        self.offsetCorrection()
-
-        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
-              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
-        self.showPhantomImage(img)
-
-    def offsetCorrection(self):
-        # Sanity Check
-        if self.rowOffset > self.zoomLevel:
-            self.rowOffset = self.zoomLevel
-        if self.colOffset > self.zoomLevel:
-            self.colOffset = self.zoomLevel
-        if self.rowOffset < -self.zoomLevel:
-            self.rowOffset = -self.zoomLevel
-        if self.colOffset < -self.zoomLevel:
-            self.colOffset = -1 * self.zoomLevel
-
-    def showPhantomImage(self, img):
-        self.qimg = qimage2ndarray.array2qimage(img)
-        # self.ui.phantomlbl.setAlignment(QtCore.Qt.AlignCenter)
-        # self.ui.phantomlbl.setFixedWidth(self.phantomSize)
-        # self.ui.phantomlbl.setFixedHeight(self.phantomSize)
-        self.ui.phantomlbl.setPixmap(QPixmap(self.qimg))
-
     def changePhantomMode(self, value):
 
         if value == "PD":
@@ -209,74 +165,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.img = self.img * (255 / np.max(self.img))
         self.originalPhantom = self.img
-        self.showPhantomImage()
-
-    def editPosition(self, event):
-        if self.lastX is None:
-            self.lastX = event.pos().x()
-        if self.lastY is None:
-            self.lastY = event.pos().y()
-            return
-
-        currentPositionX = event.pos().x()
-        if currentPositionX > self.lastX:
-            self.colOffset -= 1
-        elif currentPositionX < self.lastX:
-            self.colOffset += 1
-
-        currentPositionY = event.pos().y()
-        if currentPositionY > self.lastY:
-            self.rowOffset -= 1
-        elif currentPositionY < self.lastY:
-            self.rowOffset += 1
-
-        self.offsetCorrection()
-
-        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
-              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
-        self.showPhantomImage(img)
-
-        self.lastY = currentPositionY
-        self.lastX = currentPositionX
-
-    def editBrightnessAndContrast(self, event):
-        if self.lastX is None:
-            self.lastX = event.pos().x()
-        if self.lastY is None:
-            self.lastY = event.pos().y()
-            return
-
-        currentPositionX = event.pos().x()
-        if currentPositionX - SAFETY_MARGIN > self.lastX:
-            self.contrast += 0.01
-        elif currentPositionX < self.lastX - SAFETY_MARGIN:
-            self.contrast -= 0.01
-
-        currentPositionY = event.pos().y()
-        if currentPositionY - SAFETY_MARGIN > self.lastY:
-            self.brightness += 1
-        elif currentPositionY < self.lastY - SAFETY_MARGIN:
-            self.brightness -= 1
-        # Sanity Check
-        if self.contrast > MAX_CONTRAST:
-            self.contrast = MAX_CONTRAST
-        elif self.contrast < MIN_CONTRAST:
-            self.contrast = MIN_CONTRAST
-        if self.brightness > MAX_BRIGHTNESS:
-            self.brightness = MAX_BRIGHTNESS
-        elif self.brightness < MIN_BRIGHTNESS:
-            self.brightness = MIN_BRIGHTNESS
-
-        self.img = 128 + self.contrast * (self.originalPhantom - 128)
-        self.img = np.clip(self.img, 0, 255)
-
-        self.img = self.img + self.brightness
-        self.img = np.clip(self.img, 0, 255)
-        img = self.img[0 + self.zoomLevel:-self.zoomLevel - 1, 0 + self.zoomLevel:-self.zoomLevel - 1]
-        self.showPhantomImage(img)
-
-        self.lastY = currentPositionY
-        self.lastX = currentPositionX
+        self.ui.phantomlbl.setImg(self.img)
+        self.showPhantomImage(self.img)
 
     def pixelClicked(self, event):
         if self.img is None:
@@ -591,11 +481,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
+
+        ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
         print(vectors[30, 10])
         # vectors = rotateX(vectors, self.FA)
         # vectors = recovery(vectors, self.T1, self.TR, self.PD)
         # vectors[:, :, 0] = 0
         # vectors[:, :, 1] = 0
+
         vectors = self.prepare_vectors(vectors)
         print(vectors[30, 10])
 
@@ -672,16 +565,18 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.ui.Invtime.text() != '':
             self.inversion_time = float(self.ui.Invtime.text())
         vectors = recovery(vectors, self.T1, self.inversion_time, self.PD)
-        vectors[:, :, 0] = 0
-        vectors[:, :, 1] = 0
+        # vectors[:, :, 0] = 0
+        # vectors[:, :, 1] = 0
         return vectors
 
     def T2_prep(self, vectors):
         vectors = rotateX(vectors, 90)
-        # if self.ui.T2prep.text() != '':
-        #     self.T2_prep_time = float(self.ui.T2prep.text())
+        if self.ui.T2prep.text() != '':
+            self.T2_prep_time = float(self.ui.T2prep.text())
         vectors = decay(vectors, self.T2, self.T2_prep_time)
         vectors = rotateX(vectors, -90)
+        # vectors[:, :, 0] = 0
+        # vectors[:, :, 1] = 0
         return vectors
 
     def TAG_prep(self, vectors):
