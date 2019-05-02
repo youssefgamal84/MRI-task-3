@@ -36,6 +36,13 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
+         <widget class="QCheckBox" name="linkZoom">
+          <property name="text">
+           <string>Zoom linking</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_13">
           <item>
            <widget class="QPushButton" name="btnSheppCreate">
@@ -160,7 +167,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>2</number>
+         <number>1</number>
         </property>
         <widget class="QWidget" name="tabGraph">
          <attribute name="title">
@@ -246,7 +253,7 @@
              <string>Preparation and Acquisition</string>
             </property>
             <layout class="QFormLayout" name="formLayout">
-             <item row="0" column="0">
+             <item row="1" column="0">
               <widget class="QComboBox" name="prepSelc">
                <item>
                 <property name="text">
@@ -265,14 +272,14 @@
                </item>
               </widget>
              </item>
-             <item row="7" column="0">
+             <item row="8" column="0">
               <widget class="QLineEdit" name="Invtime">
                <property name="text">
                 <string>4.3</string>
                </property>
               </widget>
              </item>
-             <item row="15" column="0">
+             <item row="17" column="0">
               <widget class="QComboBox" name="acqBox">
                <property name="maximumSize">
                 <size>
@@ -297,7 +304,7 @@
                </item>
               </widget>
              </item>
-             <item row="6" column="0">
+             <item row="7" column="0">
               <widget class="QLabel" name="InvTimeText">
                <property name="maximumSize">
                 <size>
@@ -310,7 +317,7 @@
                </property>
               </widget>
              </item>
-             <item row="8" column="0">
+             <item row="9" column="0">
               <widget class="QLabel" name="T2prepText">
                <property name="maximumSize">
                 <size>
@@ -323,7 +330,7 @@
                </property>
               </widget>
              </item>
-             <item row="9" column="0">
+             <item row="10" column="0">
               <widget class="QLineEdit" name="T2prep">
                <property name="maximumSize">
                 <size>
@@ -336,7 +343,7 @@
                </property>
               </widget>
              </item>
-             <item row="10" column="0">
+             <item row="11" column="0">
               <widget class="QLabel" name="spacingText">
                <property name="maximumSize">
                 <size>
@@ -349,10 +356,24 @@
                </property>
               </widget>
              </item>
-             <item row="11" column="0">
+             <item row="12" column="0">
               <widget class="QLineEdit" name="spacingSW">
                <property name="text">
                 <string>7</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Preparation</string>
+               </property>
+              </widget>
+             </item>
+             <item row="16" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>Acquisition</string>
                </property>
               </widget>
              </item>
@@ -605,8 +626,31 @@
      <height>22</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuSelect">
+    <property name="title">
+     <string>Select</string>
+    </property>
+    <addaction name="actionDrag_2"/>
+    <addaction name="actionBrightness_Contrast"/>
+   </widget>
+   <addaction name="menuSelect"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionDrag">
+   <property name="text">
+    <string>Drag</string>
+   </property>
+  </action>
+  <action name="actionDrag_2">
+   <property name="text">
+    <string>Drag</string>
+   </property>
+  </action>
+  <action name="actionBrightness_Contrast">
+   <property name="text">
+    <string>Brightness &amp; Contrast</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>

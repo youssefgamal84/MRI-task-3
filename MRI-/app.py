@@ -1,6 +1,7 @@
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QCursor
 from mriui import Ui_MainWindow
 from phantom import phantom
 import numpy as np
@@ -50,9 +51,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.btnBrowse.clicked.connect(self.browse)
         # Mouse Events
         self.ui.phantomlbl.setMouseTracking(False)
+
         self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
-        self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
         self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
+
+
+        self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
+        self.ui.actionDrag_2.triggered.connect(self.selector)
+        self.ui.actionBrightness_Contrast.triggered.connect(self.selector2)
 
         # Scaling
 
@@ -113,6 +119,16 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
 
+
+    def selector(self):
+        self.ui.phantomlbl.mouseMoveEvent = self.editPosition
+        self.ui.phantomlbl.setCursor(QCursor(Qt.OpenHandCursor))        
+        print('hi')
+    def selector2(self):
+        self.ui.phantomlbl.mouseMoveEvent = self.editBrightnessAndContrast
+        self.ui.phantomlbl.setCursor(QCursor(Qt.SizeVerCursor))
+
+
     def showPhantom(self, value):
         size = int(value)
         self.phantomSize = size
@@ -165,8 +181,78 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         self.img = self.img * (255 / np.max(self.img))
         self.originalPhantom = self.img
+
         self.ui.phantomlbl.setImg(self.img)
         self.showPhantomImage(self.img)
+
+
+    def editPosition(self, event):
+        if self.lastX is None:
+            self.lastX = event.pos().x()
+        if self.lastY is None:
+            self.lastY = event.pos().y()
+            return
+
+        currentPositionX = event.pos().x()
+        if currentPositionX > self.lastX:
+            self.colOffset -= 1
+        elif currentPositionX < self.lastX:
+            self.colOffset += 1
+
+        currentPositionY = event.pos().y()
+        if currentPositionY > self.lastY:
+            self.rowOffset -= 1
+        elif currentPositionY < self.lastY:
+            self.rowOffset += 1
+
+        self.offsetCorrection()
+
+        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
+              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
+        self.showPhantomImage(img)
+
+        self.lastY = currentPositionY
+        self.lastX = currentPositionX
+
+    def editBrightnessAndContrast(self, event):
+        if self.lastX is None:
+            self.lastX = event.pos().x()
+        if self.lastY is None:
+            self.lastY = event.pos().y()
+            return
+
+        currentPositionX = event.pos().x()
+        if currentPositionX - SAFETY_MARGIN > self.lastX:
+            self.contrast += 0.01
+        elif currentPositionX < self.lastX - SAFETY_MARGIN:
+            self.contrast -= 0.01
+
+        currentPositionY = event.pos().y()
+        if currentPositionY - SAFETY_MARGIN > self.lastY:
+            self.brightness += 1
+        elif currentPositionY < self.lastY - SAFETY_MARGIN:
+            self.brightness -= 1
+        # Sanity Check
+        if self.contrast > MAX_CONTRAST:
+            self.contrast = MAX_CONTRAST
+        elif self.contrast < MIN_CONTRAST:
+            self.contrast = MIN_CONTRAST
+        if self.brightness > MAX_BRIGHTNESS:
+            self.brightness = MAX_BRIGHTNESS
+        elif self.brightness < MIN_BRIGHTNESS:
+            self.brightness = MIN_BRIGHTNESS
+
+        self.img = 128 + self.contrast * (self.originalPhantom - 128)
+        self.img = np.clip(self.img, 0, 255)
+
+        self.img = self.img + self.brightness
+        self.img = np.clip(self.img, 0, 255)
+        img = self.img[0 + self.zoomLevel:-self.zoomLevel - 1, 0 + self.zoomLevel:-self.zoomLevel - 1]
+        self.showPhantomImage(img)
+
+        self.lastY = currentPositionY
+        self.lastX = currentPositionX
+
 
     def pixelClicked(self, event):
         if self.img is None:
@@ -271,6 +357,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             FA = 1
             print(FA)
 
+        if self.ui.FlipAngle.text() != '':
+            t2 = int(self.ui.T2prep.text())
+            print(t2)
+        else:
+            t2 = 2
+            print(t2)
+
         if self.ui.prepSelc.currentText() == 'Inversion' and self.ui.acqBox.currentText() == 'GRE':
             print(1)
             self.drawRf(2, FA, 0, 0, 10)
@@ -291,19 +384,19 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.drawGx(.5, .5, -6, 4)
         if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'GRE':
             print(4)
-            self.drawRf(1, -1, FA, 0, 5, 5)
+            self.drawRf(1, -1, FA, 0, 5, 5, 0, t2)
             self.drawGz(.5, 0, 0)
             self.drawGy(.5, 0, 0)
             self.drawGx(.5, 0, 0)
         if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SSFP':
             print(5)
-            self.drawRf(1, -1, FA, 0, 5, 5)
+            self.drawRf(1, -1, FA, 0, 5, 5, 0, t2)
             self.drawGz(.5, 0, 0)
             self.drawGy(.5, -.5, 10)
             self.drawGx(.5, -.5, -1, 4)
         if self.ui.prepSelc.currentText() == 'T2prep' and self.ui.acqBox.currentText() == 'SE':
             print(6)
-            self.drawRf(1, -1, 2, FA, 5, 10, (10 / 3))
+            self.drawRf(1, -1, 2, FA, 5, 10, (10 / 3), t2)
             self.drawGz(.5, .5, 3)
             self.drawGy(.5, 0, 0)
             self.drawGx(.5, .5, -6, 4)
@@ -364,12 +457,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if angle2 != 0:
             self.graphicRep.plot(tz + dist + 8, x_rect + 3, pen=pg.mkPen('r'))
 
-    def drawRf(self, angle1=1, angle2=1, angle3=1, angle4=1, dist1=0, dist2=0, dist3=0):
+    def drawRf(self, angle1=1, angle2=1, angle3=1, angle4=1, dist1=0, dist2=0, dist3=0, t2 = 0):
         self.graphicRep.clear()
         t = np.arange(-50, 100, .01)
         x_tri = ss.tri(t + 2, 0.2)
         x_tri = x_tri * angle1
-        self.graphicRep.plot(t, x_tri + 4, pen=pg.mkPen('y'))
+        self.graphicRep.plot(t-t2, x_tri + 4, pen=pg.mkPen('y'))
         t = np.arange(-50, 100, .01)
         x_tri = ss.tri(t + 2, 0.2)
         x_tri = x_tri * angle2
@@ -419,6 +512,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if self.img is None:
             self.error('Choose a phantom first')
         else:
+            self.ui.kspaceLbl.setCursor(QCursor(Qt.WaitCursor))
             self.ui.tabWidget.setCurrentIndex(1)
             if self.ui.acqBox.currentText() == 'GRE':
                 threading.Thread(target=self.GRE_reconstruct_image).start()
@@ -426,7 +520,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 threading.Thread(target=self.SSFP_reconstruct_image).start()
             if self.ui.acqBox.currentText() == 'SE':
                 threading.Thread(target=self.SE_image_reconstruct).start()
-
             return
 
     def GRE_reconstruct_image(self):
@@ -471,6 +564,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         #     kSpace[:, i] = np.fft.fft(kSpace[:, i])
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
+        self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def SSFP_reconstruct_image(self):
         kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
@@ -516,6 +610,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         kSpace = np.fft.fftshift(kSpace)
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
+        self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def prepare_vectors(self, vectors):
         vectors = self.startup_cycles(vectors)
@@ -559,6 +654,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
+        self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def TI_Prep(self, vectors):
         vectors = rotateX(vectors, 180)
