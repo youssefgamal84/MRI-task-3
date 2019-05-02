@@ -12,7 +12,7 @@ import threading
 from rotation import rotateX, gradientXY
 from RD import recovery, decay
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from math import sin, cos, pi
 import csv
 from ernst import ernst_angle
@@ -49,12 +49,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.TimeEcho.textChanged.connect(self.setTE)
         self.ui.TimeRepeat.textChanged.connect(self.setTR)
         self.ui.btnBrowse.clicked.connect(self.browse)
+        self.ui.linkZoom.stateChanged.connect(self.zoomLinkChanged)
         # Mouse Events
         self.ui.phantomlbl.setMouseTracking(False)
+        self.ui.kspaceLbl.setMouseTracking(False)
 
         self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
         self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
-
 
         self.ui.phantomlbl.mouseDoubleClickEvent = self.pixelClicked
         self.ui.actionDrag_2.triggered.connect(self.selector)
@@ -119,20 +120,47 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
 
+    def zoomLinkChanged(self, state):
+        if state:
+            self.ui.phantomlbl.wheelEvent = self.linked_zooming
+            self.ui.kspaceLbl.wheelEvent = self.linked_zooming
+            self.ui.phantomlbl.mouseMoveEvent = self.linked_dragging
+            self.ui.kspaceLbl.mouseMoveEvent = self.linked_dragging
+            self.ui.kspaceLbl.zoomLevel = self.ui.phantomlbl.zoomLevel
+            self.ui.kspaceLbl.rowOffset = self.ui.phantomlbl.rowOffset
+            self.ui.kspaceLbl.colOffset = self.ui.phantomlbl.colOffset
+        else:
+            self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
+            self.ui.kspaceLbl.wheelEvent = self.ui.kspaceLbl.zoomInOut
+            self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
+            self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
+
+    def linked_zooming(self, event):
+        self.ui.phantomlbl.zoomInOut(event)
+        self.ui.kspaceLbl.zoomInOut(event)
+
+    def linked_dragging(self, event):
+        self.ui.phantomlbl.editPosition(event)
+        self.ui.kspaceLbl.editPosition(event)
 
     def selector(self):
-        self.ui.phantomlbl.mouseMoveEvent = self.editPosition
-        self.ui.phantomlbl.setCursor(QCursor(Qt.OpenHandCursor))        
+        self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
+        self.ui.kspaceLbl.mouseMoveEvent = self.ui.kspaceLbl.editPosition
+        self.ui.phantomlbl.setCursor(QCursor(Qt.OpenHandCursor))
+        self.ui.kspaceLbl.setCursor(QCursor(Qt.OpenHandCursor))
         print('hi')
-    def selector2(self):
-        self.ui.phantomlbl.mouseMoveEvent = self.editBrightnessAndContrast
-        self.ui.phantomlbl.setCursor(QCursor(Qt.SizeVerCursor))
 
+    def selector2(self):
+        self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editBrightnessAndContrast
+        self.ui.kspaceLbl.mouseMoveEvent = self.ui.kspaceLbl.editBrightnessAndContrast
+        self.ui.phantomlbl.setCursor(QCursor(Qt.SizeVerCursor))
+        self.ui.kspaceLbl.setCursor(QCursor(Qt.SizeVerCursor))
 
     def showPhantom(self, value):
         size = int(value)
         self.phantomSize = size
         self.ui.phantomlbl.phantomSize = size
+        self.ui.kspaceLbl.phantomSize = size
         img = phantom(size)
         self.PD = img
         img = img * 255
@@ -185,75 +213,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.phantomlbl.setImg(self.img)
         self.showPhantomImage(self.img)
 
-
-    def editPosition(self, event):
-        if self.lastX is None:
-            self.lastX = event.pos().x()
-        if self.lastY is None:
-            self.lastY = event.pos().y()
-            return
-
-        currentPositionX = event.pos().x()
-        if currentPositionX > self.lastX:
-            self.colOffset -= 1
-        elif currentPositionX < self.lastX:
-            self.colOffset += 1
-
-        currentPositionY = event.pos().y()
-        if currentPositionY > self.lastY:
-            self.rowOffset -= 1
-        elif currentPositionY < self.lastY:
-            self.rowOffset += 1
-
-        self.offsetCorrection()
-
-        img = self.img[0 + self.zoomLevel + self.rowOffset:-self.zoomLevel - 1 + self.rowOffset,
-              0 + self.zoomLevel + self.colOffset:-self.zoomLevel - 1 + self.colOffset]
-        self.showPhantomImage(img)
-
-        self.lastY = currentPositionY
-        self.lastX = currentPositionX
-
-    def editBrightnessAndContrast(self, event):
-        if self.lastX is None:
-            self.lastX = event.pos().x()
-        if self.lastY is None:
-            self.lastY = event.pos().y()
-            return
-
-        currentPositionX = event.pos().x()
-        if currentPositionX - SAFETY_MARGIN > self.lastX:
-            self.contrast += 0.01
-        elif currentPositionX < self.lastX - SAFETY_MARGIN:
-            self.contrast -= 0.01
-
-        currentPositionY = event.pos().y()
-        if currentPositionY - SAFETY_MARGIN > self.lastY:
-            self.brightness += 1
-        elif currentPositionY < self.lastY - SAFETY_MARGIN:
-            self.brightness -= 1
-        # Sanity Check
-        if self.contrast > MAX_CONTRAST:
-            self.contrast = MAX_CONTRAST
-        elif self.contrast < MIN_CONTRAST:
-            self.contrast = MIN_CONTRAST
-        if self.brightness > MAX_BRIGHTNESS:
-            self.brightness = MAX_BRIGHTNESS
-        elif self.brightness < MIN_BRIGHTNESS:
-            self.brightness = MIN_BRIGHTNESS
-
-        self.img = 128 + self.contrast * (self.originalPhantom - 128)
-        self.img = np.clip(self.img, 0, 255)
-
-        self.img = self.img + self.brightness
-        self.img = np.clip(self.img, 0, 255)
-        img = self.img[0 + self.zoomLevel:-self.zoomLevel - 1, 0 + self.zoomLevel:-self.zoomLevel - 1]
-        self.showPhantomImage(img)
-
-        self.lastY = currentPositionY
-        self.lastX = currentPositionX
-
-
     def pixelClicked(self, event):
         if self.img is None:
             self.error('Choose Phantom First')
@@ -269,8 +228,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
             xt = self.ui.phantomlbl.frameGeometry().width()
             yt = self.ui.phantomlbl.frameGeometry().height()
-            x = event.pos().x() * (self.phantomSize / xt)
-            y = event.pos().y() * (self.phantomSize / yt)
+            x = event.pos().x() * ((self.phantomSize - self.ui.phantomlbl.zoomLevel * 2) / xt)
+            y = event.pos().y() * ((self.phantomSize - self.ui.phantomlbl.zoomLevel * 2) / yt)
+            x = x + self.ui.phantomlbl.colOffset + self.ui.phantomlbl.zoomLevel
+            y = y + self.ui.phantomlbl.rowOffset + self.ui.phantomlbl.zoomLevel
             x = math.floor(x)
             y = math.floor(y)
             self.pixelsClicked.append((x, y))
@@ -300,39 +261,6 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 self.plotting(color, t1 * 1000, t2 * 1000)
                 self.pixelSelector += 1
                 self.pixelSelector = self.pixelSelector % 3
-
-    # def paintEvent(self, event):
-    #     # create painter instance with pixmap
-    #     # canvas = QPixmap(self.ui.phantomlbl)
-    #     paint = QtGui.QPainter()
-    #     paint.begin(self.ui.phantomlbl)
-    #
-    #     # set rectangle color and thickness
-    #
-    #     for pixelSet in self.pixelsClicked:
-    #         self.x = pixelSet[0]
-    #         self.y = pixelSet[1]
-    #         xt = self.ui.phantomlbl.frameGeometry().width()
-    #         yt = self.ui.phantomlbl.frameGeometry().height()
-    #         self.x = self.x / (self.phantomSize / xt)
-    #         self.y = self.y / (self.phantomSize / yt)
-    #         self.x = math.floor(self.x)
-    #         self.y = math.floor(self.y)
-    #         if self.pixelSelector == 0:
-    #             pen = QtGui.QPen(QtCore.Qt.red)
-    #         if self.pixelSelector == 1:
-    #             pen = QtGui.QPen(QtCore.Qt.blue)
-    #         if self.pixelSelector == 2:
-    #             pen = QtGui.QPen(QtCore.Qt.yellow)
-    #         pen.setWidth(1)
-    #         paint.setPen(pen)
-    #         # draw rectangle on painter
-    #         paint.drawRect(self.x - 1, self.y - 1, 50, 20)
-    #         # set pixmap onto the label widget
-    #         # self.ui.phantomlbl.setPixmap(canvas)
-    #         self.pixelSelector += 1
-    #         self.pixelSelector = self.pixelSelector % 3
-    #     paint.end()
 
     def plotting(self, color, T1=1000, T2=45):
         t1graph = self.ui.graphicsPlotT1
@@ -457,12 +385,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         if angle2 != 0:
             self.graphicRep.plot(tz + dist + 8, x_rect + 3, pen=pg.mkPen('r'))
 
-    def drawRf(self, angle1=1, angle2=1, angle3=1, angle4=1, dist1=0, dist2=0, dist3=0, t2 = 0):
+    def drawRf(self, angle1=1, angle2=1, angle3=1, angle4=1, dist1=0, dist2=0, dist3=0, t2=0):
         self.graphicRep.clear()
         t = np.arange(-50, 100, .01)
         x_tri = ss.tri(t + 2, 0.2)
         x_tri = x_tri * angle1
-        self.graphicRep.plot(t-t2, x_tri + 4, pen=pg.mkPen('y'))
+        self.graphicRep.plot(t - t2, x_tri + 4, pen=pg.mkPen('y'))
         t = np.arange(-50, 100, .01)
         x_tri = ss.tri(t + 2, 0.2)
         x_tri = x_tri * angle2
@@ -514,6 +442,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         else:
             self.ui.kspaceLbl.setCursor(QCursor(Qt.WaitCursor))
             self.ui.tabWidget.setCurrentIndex(1)
+            self.ui.kspaceLbl.setImg(None)
             if self.ui.acqBox.currentText() == 'GRE':
                 threading.Thread(target=self.GRE_reconstruct_image).start()
             if self.ui.acqBox.currentText() == 'SSFP':
@@ -713,6 +642,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         img = np.round(img)
         qimg = qimage2ndarray.array2qimage(np.abs(img))
         self.ui.kspaceLbl.setPixmap(QPixmap(qimg))
+        self.ui.kspaceLbl.setImg(img)
 
     def error(self, message):
         errorBox = QMessageBox()

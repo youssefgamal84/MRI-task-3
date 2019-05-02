@@ -24,6 +24,10 @@ class myLabel(QtWidgets.QLabel):
         self.phantomSize = 32
 
         self.img = None
+        self.originalPhantom = None
+
+        self.wheelEvent = self.zoomInOut
+        self.mouseMoveEvent = self.editPosition
 
         # Parameters for zooming
         self.zoomLevel = 0
@@ -88,8 +92,8 @@ class myLabel(QtWidgets.QLabel):
             self.zoomLevel = 0
             self.rowOffset = 0
             self.colOffset = 0
-        elif self.zoomLevel > self.phantomSize / 2:
-            self.zoomLevel = int(self.phantomSize / 2)
+        elif self.zoomLevel > self.phantomSize / 2 - 2:
+            self.zoomLevel = int(self.phantomSize / 2 - 2)
 
         self.offsetCorrection()
 
@@ -117,6 +121,7 @@ class myLabel(QtWidgets.QLabel):
 
     def setImg(self, img):
         self.img = img
+        self.originalPhantom = img
 
     def editPosition(self, event):
         if self.lastX is None:
