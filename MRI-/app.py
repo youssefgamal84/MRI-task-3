@@ -12,7 +12,7 @@ import threading
 from rotation import rotateX, gradientXY
 from RD import recovery, decay
 import pyqtgraph as pg
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from math import sin, cos, pi
 import csv
 import sk_dsp_comm.sigsys as ss  # pip install sk_dsp_comm
@@ -120,15 +120,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 print(np.shape(self.T1))
                 self.T2 = mat[2 * row:3 * row + 1]
                 print(np.shape(self.T2))
-                self.showPhantomImage()
+                self.showPhantomImage(self.PD)
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
 
 
     def selector(self):
         self.ui.phantomlbl.mouseMoveEvent = self.editPosition
-        self.ui.phantomlbl.setCursor(QCursor(Qt.OpenHandCursor))        
-        print('hi')
+        self.ui.phantomlbl.setCursor(QCursor(Qt.ClosedHandCursor))        
     def selector2(self):
         self.ui.phantomlbl.mouseMoveEvent = self.editBrightnessAndContrast
         self.ui.phantomlbl.setCursor(QCursor(Qt.SizeVerCursor))
@@ -526,7 +525,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.sinFA = sin(self.FA * pi / 180)
         except:
             self.error("FA must be a number")
-
+ 
     def setTE(self, value):
         print(value)
         try:
