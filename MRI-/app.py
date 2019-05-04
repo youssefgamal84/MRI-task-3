@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from math import sin, cos, pi
 import csv
 from ernst import ernst_angle
+from scipy.ndimage.interpolation import shift
 import sk_dsp_comm.sigsys as ss  # pip install sk_dsp_comm
 
 MAX_CONTRAST = 2
@@ -91,6 +92,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.x = 0
         self.y = 0
 
+        # Artifacting
+        self.shifting_artifact = True
+
         self.pixelsClicked = [(0, 0), (0, 0), (0, 0)]
         self.pixelSelector = 0
 
@@ -133,7 +137,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
             self.ui.kspaceLbl.wheelEvent = self.ui.kspaceLbl.zoomInOut
             self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
-            self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
+            self.ui.kspaceLbl.mouseMoveEvent = self.ui.kspaceLbl.editPosition
 
     def linked_zooming(self, event):
         self.ui.phantomlbl.zoomInOut(event)
@@ -456,7 +460,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
         vectors[:, :, 2] = 1
 
-        # To be Removed
+        # Proton Density effect
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
@@ -464,6 +468,9 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = self.prepare_vectors(vectors)
 
         for i in range(0, round(self.phantomSize)):
+            if self.shifting_artifact and i == 10:
+                self.make_shift(vectors)
+
             rotatedMatrix = rotateX(vectors, self.FA)
             decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
 
@@ -493,19 +500,34 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         #     kSpace[:, i] = np.fft.fft(kSpace[:, i])
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize,"t1")
+            self.T2 = phantom(self.phantomSize,"t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
+
+    def make_shift(self, vectors):
+        shiftValue = int(self.phantomSize / 4)
+        vectors[0:self.phantomSize - shiftValue, :, :], vectors[self.phantomSize - shiftValue:self.phantomSize, :,
+                                                        :] = vectors[shiftValue:self.phantomSize, :, :], np.zeros(
+            (shiftValue, self.phantomSize, 3))
+        self.T1[0:self.phantomSize - shiftValue, :], self.T1[self.phantomSize - shiftValue:self.phantomSize,
+                                                     :] = self.T1[shiftValue:self.phantomSize, :], np.zeros(
+            (shiftValue, self.phantomSize))
+        self.T2[0:self.phantomSize - shiftValue, :], self.T2[self.phantomSize - shiftValue:self.phantomSize,
+                                                     :] = self.T2[shiftValue:self.phantomSize, :], np.zeros(
+            (shiftValue, self.phantomSize))
 
     def SSFP_reconstruct_image(self):
         kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
         vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
         vectors[:, :, 2] = 1
 
-        # To be Removed
+        # Proton Density Effect
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
 
-        ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
+        # ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
         print(vectors[30, 10])
         # vectors = rotateX(vectors, self.FA)
         # vectors = recovery(vectors, self.T1, self.TR, self.PD)
@@ -517,6 +539,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         vectors = rotateX(vectors, self.FA)
         for i in range(0, round(self.phantomSize)):
+            if self.shifting_artifact and i == 10:
+                self.make_shift(vectors)
             rotatedMatrix = vectors
             decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
 
@@ -537,8 +561,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 vectors = rotateX(rotatedMatrix, self.FA * 2)
 
         kSpace = np.fft.fftshift(kSpace)
-        kSpace = np.fft.fft2(kSpace)
-        self.showReconstructedImage(kSpace)
+        img = np.fft.fft2(kSpace)
+        center = self.phantomSize / 2
+        center = int(center)
+        img[0:center, :], img[center:self.phantomSize, :] = img[center:self.phantomSize, :], img[0:center, :].copy()
+        self.showReconstructedImage(img)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize,"t1")
+            self.T2 = phantom(self.phantomSize,"t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def prepare_vectors(self, vectors):
@@ -564,6 +594,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = self.prepare_vectors(vectors)
 
         for i in range(0, self.phantomSize):
+            if i == 10 and self.shifting_artifact:
+                self.make_shift(vectors)
             for j in range(0, self.phantomSize):
                 stepX = (360 / self.phantomSize) * i
                 stepY = (360 / self.phantomSize) * j
@@ -581,8 +613,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             spinEcho[:, :, 1] = 0
             vectors = recovery(spinEcho, self.T1, self.TR, self.PD)
 
-        kSpace = np.fft.fft2(kSpace)
-        self.showReconstructedImage(kSpace)
+        img = np.fft.fft2(kSpace)
+        img = np.fliplr(img)
+        self.showReconstructedImage(img)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize,"t1")
+            self.T2 = phantom(self.phantomSize,"t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def TI_Prep(self, vectors):
