@@ -43,6 +43,20 @@
          </widget>
         </item>
         <item>
+         <widget class="QCheckBox" name="shiftting">
+          <property name="text">
+           <string>Shiftting</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="alliasing_2">
+          <property name="text">
+           <string>Alliasing</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_13">
           <item>
            <widget class="QPushButton" name="btnSheppCreate">
@@ -640,15 +654,7 @@
     <addaction name="actionDrag_2"/>
     <addaction name="actionBrightness_Contrast"/>
    </widget>
-   <widget class="QMenu" name="menuArtifacts">
-    <property name="title">
-     <string>Artifacts</string>
-    </property>
-    <addaction name="alliasing"/>
-    <addaction name="shiftingArtifact"/>
-   </widget>
    <addaction name="menuSelect"/>
-   <addaction name="menuArtifacts"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionDrag">

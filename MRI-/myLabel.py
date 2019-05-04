@@ -19,15 +19,16 @@ class myLabel(QtWidgets.QLabel):
         super(myLabel, self).__init__(parent=parent)
 
         # Parameters for the pixel painting
-        self.pixelsClicked = [(0, 0), (0, 0), (0, 0)]
+        self.pixelsClicked = [(-5, -5), (-5, -5), (-5, -5)]
         self.pixelSelector = 0
         self.phantomSize = 32
 
-        self.img = None
+        self.img = None # because when we change brightness/contrast we need to return back to original later
         self.originalPhantom = None
 
+        # When these events happen... execute these methods (functions)
         self.wheelEvent = self.zoomInOut
-        self.mouseMoveEvent = self.editPosition
+        self.mouseMoveEvent = self.editPosition # Drag photo
 
         # Parameters for zooming
         self.zoomLevel = 0
@@ -82,7 +83,7 @@ class myLabel(QtWidgets.QLabel):
         paint.end()
 
     def zoomInOut(self, event):
-        direction = event.angleDelta().y() > 0
+        direction = event.angleDelta().y() > 0 # Determine Direction
         if direction:
             self.zoomLevel = self.zoomLevel + 1
         else:
@@ -92,6 +93,7 @@ class myLabel(QtWidgets.QLabel):
             self.zoomLevel = 0
             self.rowOffset = 0
             self.colOffset = 0
+            # to prevent 0x0 matrix
         elif self.zoomLevel > self.phantomSize / 2 - 2:
             self.zoomLevel = int(self.phantomSize / 2 - 2)
 
@@ -103,10 +105,13 @@ class myLabel(QtWidgets.QLabel):
 
     def offsetCorrection(self):
         # Sanity Check
+        # 3ashan lama a3ml zoom out...yrg3 el row el sa7
+        # e3mal el s7 .... Ostaz 8assan mattar <3
         if self.rowOffset > self.zoomLevel:
             self.rowOffset = self.zoomLevel
         if self.colOffset > self.zoomLevel:
             self.colOffset = self.zoomLevel
+
         if self.rowOffset < -self.zoomLevel:
             self.rowOffset = -self.zoomLevel
         if self.colOffset < -self.zoomLevel:
@@ -184,7 +189,8 @@ class myLabel(QtWidgets.QLabel):
 
         self.img = self.img + self.brightness
         self.img = np.clip(self.img, 0, 255)
-        img = self.img[0 + self.zoomLevel:-self.zoomLevel - 1, 0 + self.zoomLevel:-self.zoomLevel - 1]
+        img = self.img[0 + self.zoomLevel + self.rowOffset:self.phantomSize - self.zoomLevel + self.rowOffset,
+              0 + self.zoomLevel + self.colOffset:self.phantomSize - self.zoomLevel + self.colOffset]
         self.showPhantomImage(img)
 
         self.lastY = currentPositionY

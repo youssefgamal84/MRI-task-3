@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 from math import sin, cos, pi
 import csv
 from ernst import ernst_angle
+from scipy.ndimage.interpolation import shift
 import sk_dsp_comm.sigsys as ss  # pip install sk_dsp_comm
 
 MAX_CONTRAST = 2
@@ -40,6 +41,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.ui.Invtime.show()
         self.ui.InvTimeText.show()
         self.ui.spacingSW.hide()
+        self.ui.ernestAngnle.clicked.connect(self.showErnst)
         self.ui.spacingText.hide()
         self.ui.T2prep.hide()
         self.ui.T2prepText.hide()
@@ -91,6 +93,10 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.x = 0
         self.y = 0
 
+        # Artifacting
+        self.shifting_artifact = False
+        self.aliasing_artifact = False
+
         self.pixelsClicked = [(0, 0), (0, 0), (0, 0)]
         self.pixelSelector = 0
 
@@ -120,6 +126,14 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
 
+    def showErnst(self):
+        if self.img is None:
+            self.error("Choose Phantom first")
+            return
+        vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
+        vectors[:, :, 2] = 1
+        ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
+
     def zoomLinkChanged(self, state):
         if state:
             self.ui.phantomlbl.wheelEvent = self.linked_zooming
@@ -133,7 +147,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.ui.phantomlbl.wheelEvent = self.ui.phantomlbl.zoomInOut
             self.ui.kspaceLbl.wheelEvent = self.ui.kspaceLbl.zoomInOut
             self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
-            self.ui.phantomlbl.mouseMoveEvent = self.ui.phantomlbl.editPosition
+            self.ui.kspaceLbl.mouseMoveEvent = self.ui.kspaceLbl.editPosition
 
     def linked_zooming(self, event):
         self.ui.phantomlbl.zoomInOut(event)
@@ -286,7 +300,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             print(FA)
 
         if self.ui.FlipAngle.text() != '':
-            t2 = int(self.ui.T2prep.text())
+            t2 = float(self.ui.T2prep.text())
             print(t2)
         else:
             t2 = 2
@@ -419,7 +433,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.sinFA = sin(self.FA * pi / 180)
         except:
             self.error("FA must be a number")
- 
+
     def setTE(self, value):
         print(value)
         try:
@@ -456,7 +470,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
         vectors[:, :, 2] = 1
 
-        # To be Removed
+        # Proton Density effect
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
@@ -464,11 +478,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = self.prepare_vectors(vectors)
 
         for i in range(0, round(self.phantomSize)):
+            if self.shifting_artifact and i == 10:
+                self.make_shift(vectors)
+
             rotatedMatrix = rotateX(vectors, self.FA)
             decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
 
             for j in range(0, self.phantomSize):
-                stepX = (360 / self.phantomSize) * i
+                if self.aliasing_artifact:
+                    stepX = (360 / (self.phantomSize / 2)) * i
+                else:
+                    stepX = (360 / self.phantomSize) * i
                 stepY = (360 / self.phantomSize) * j
                 phaseEncodedMatrix = gradientXY(decayedRotatedMatrix, stepY, stepX)
                 sigmaX = np.sum(phaseEncodedMatrix[:, :, 0])
@@ -485,27 +505,36 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             vectors = recovery(decayedRotatedMatrix, self.T1, self.TR, self.PD)
             # print(vectors[32,20])
 
-        # kSpace = np.fft.fftshift(kSpace)
-        # kSpace = np.fft.fft2(kSpace)
-        # for i in range(0, self.phantomSize):
-        #     kSpace[i, :] = np.fft.fft(kSpace[i, :])
-        # for i in range(0, self.phantomSize):
-        #     kSpace[:, i] = np.fft.fft(kSpace[:, i])
         kSpace = np.fft.fft2(kSpace)
         self.showReconstructedImage(kSpace)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize, "t1")
+            self.T2 = phantom(self.phantomSize, "t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
+
+    def make_shift(self, vectors):
+        shiftValue = int(self.phantomSize / 4)
+        vectors[0:self.phantomSize - shiftValue, :, :], vectors[self.phantomSize - shiftValue:self.phantomSize, :,
+                                                        :] = vectors[shiftValue:self.phantomSize, :, :], np.zeros(
+            (shiftValue, self.phantomSize, 3))
+        self.T1[0:self.phantomSize - shiftValue, :], self.T1[self.phantomSize - shiftValue:self.phantomSize,
+                                                     :] = self.T1[shiftValue:self.phantomSize, :], np.zeros(
+            (shiftValue, self.phantomSize))
+        self.T2[0:self.phantomSize - shiftValue, :], self.T2[self.phantomSize - shiftValue:self.phantomSize,
+                                                     :] = self.T2[shiftValue:self.phantomSize, :], np.zeros(
+            (shiftValue, self.phantomSize))
 
     def SSFP_reconstruct_image(self):
         kSpace = np.zeros((self.phantomSize, self.phantomSize), dtype=np.complex_)
         vectors = np.zeros((self.phantomSize, self.phantomSize, 3))
         vectors[:, :, 2] = 1
 
-        # To be Removed
+        # Proton Density Effect
         for i in range(0, self.phantomSize):
             for j in range(0, self.phantomSize):
                 vectors[i, j] = vectors[i, j].dot(self.PD[i, j])
 
-        ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
+        # ernst_angle(vectors, self.TR, self.T1, self.PD, self.T2)
         print(vectors[30, 10])
         # vectors = rotateX(vectors, self.FA)
         # vectors = recovery(vectors, self.T1, self.TR, self.PD)
@@ -517,11 +546,17 @@ class ApplicationWindow(QtWidgets.QMainWindow):
 
         vectors = rotateX(vectors, self.FA)
         for i in range(0, round(self.phantomSize)):
+            if self.shifting_artifact and i == 10:
+                self.make_shift(vectors)
             rotatedMatrix = vectors
             decayedRotatedMatrix = decay(rotatedMatrix, self.T2, self.TE)
 
             for j in range(0, self.phantomSize):
-                stepX = (360 / self.phantomSize) * i
+
+                if self.aliasing_artifact:
+                    stepX = (360 / (self.phantomSize / 2)) * i
+                else:
+                    stepX = (360 / self.phantomSize) * i
                 stepY = (360 / self.phantomSize) * j
                 phaseEncodedMatrix = gradientXY(decayedRotatedMatrix, stepY, stepX)
                 sigmaX = np.sum(phaseEncodedMatrix[:, :, 0])
@@ -529,16 +564,23 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 valueToAdd = np.complex(sigmaX, sigmaY)
                 kSpace[i, j] = valueToAdd
 
+
             self.showKSpace(kSpace)
-            print(i)
+            vectors = recovery(decayedRotatedMatrix,self.T1,self.TR,self.PD)
             if i % 2 == 0:
-                vectors = rotateX(rotatedMatrix, -1 * self.FA * 2)
+                vectors = rotateX(vectors, -1 * self.FA * 2)
             else:
-                vectors = rotateX(rotatedMatrix, self.FA * 2)
+                vectors = rotateX(vectors, self.FA * 2)
 
         kSpace = np.fft.fftshift(kSpace)
-        kSpace = np.fft.fft2(kSpace)
-        self.showReconstructedImage(kSpace)
+        img = np.fft.fft2(kSpace)
+        center = self.phantomSize / 2
+        center = int(center)
+        img[0:center, :], img[center:self.phantomSize, :] = img[center:self.phantomSize, :], img[0:center, :].copy()
+        self.showReconstructedImage(img)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize, "t1")
+            self.T2 = phantom(self.phantomSize, "t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def prepare_vectors(self, vectors):
@@ -564,8 +606,13 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         vectors = self.prepare_vectors(vectors)
 
         for i in range(0, self.phantomSize):
+            if i == 10 and self.shifting_artifact:
+                self.make_shift(vectors)
             for j in range(0, self.phantomSize):
-                stepX = (360 / self.phantomSize) * i
+                if self.aliasing_artifact:
+                    stepX = (360 / (self.phantomSize / 2)) * i
+                else:
+                    stepX = (360 / self.phantomSize) * i
                 stepY = (360 / self.phantomSize) * j
                 rotatedMatrix = rotateX(vectors, 90)
                 rotatedMatrix = gradientXY(rotatedMatrix, stepY, 0)
@@ -581,8 +628,12 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             spinEcho[:, :, 1] = 0
             vectors = recovery(spinEcho, self.T1, self.TR, self.PD)
 
-        kSpace = np.fft.fft2(kSpace)
-        self.showReconstructedImage(kSpace)
+        img = np.fft.fft2(kSpace)
+        img = np.fliplr(img)
+        self.showReconstructedImage(img)
+        if self.shifting_artifact:
+            self.T1 = phantom(self.phantomSize, "t1")
+            self.T2 = phantom(self.phantomSize, "t2")
         self.ui.kspaceLbl.setCursor(QCursor(Qt.ArrowCursor))
 
     def TI_Prep(self, vectors):
