@@ -92,7 +92,8 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.TR = 0.5
         self.x = 0
         self.y = 0
-
+        self.ui.alliasing_2.stateChanged.connect(self.startArtifact)
+        self.ui.shiftting.stateChanged.connect(self.startArtifact)
         # Artifacting
         self.shifting_artifact = False
         self.aliasing_artifact = False
@@ -125,6 +126,24 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 self.showPhantomImage(self.PD)
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
+
+
+    def startArtifact(self):
+        if self.ui.alliasing_2.isChecked() and self.ui.shiftting.isChecked():
+            self.aliasing_artifact = True
+            self.shifting_artifact = True
+        if self.ui.alliasing_2.isChecked() and not self.ui.shiftting.isChecked():
+          self.aliasing_artifact = True
+          self.shifting_artifact = False
+        if not self.ui.alliasing_2.isChecked() and self.ui.shiftting.isChecked():
+          self.aliasing_artifact = False
+          self.shifting_artifact = True
+        if not self.ui.alliasing_2.isChecked() and not self.ui.shiftting.isChecked():
+          self.aliasing_artifact = False
+          self.shifting_artifact = False
+
+
+
 
     def showErnst(self):
         if self.img is None:
