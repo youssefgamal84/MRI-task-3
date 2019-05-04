@@ -167,7 +167,7 @@
       <item>
        <widget class="QTabWidget" name="tabWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>3</number>
         </property>
         <widget class="QWidget" name="tabGraph">
          <attribute name="title">
@@ -404,6 +404,13 @@
      </widget>
     </item>
     <item>
+     <widget class="QPushButton" name="ernestAngnle">
+      <property name="text">
+       <string>Ernest Angle</string>
+      </property>
+     </widget>
+    </item>
+    <item>
      <widget class="QPushButton" name="startSeq">
       <property name="text">
        <string>Start Sequence</string>
@@ -633,7 +640,15 @@
     <addaction name="actionDrag_2"/>
     <addaction name="actionBrightness_Contrast"/>
    </widget>
+   <widget class="QMenu" name="menuArtifacts">
+    <property name="title">
+     <string>Artifacts</string>
+    </property>
+    <addaction name="alliasing"/>
+    <addaction name="shiftingArtifact"/>
+   </widget>
    <addaction name="menuSelect"/>
+   <addaction name="menuArtifacts"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionDrag">
@@ -649,6 +664,16 @@
   <action name="actionBrightness_Contrast">
    <property name="text">
     <string>Brightness &amp; Contrast</string>
+   </property>
+  </action>
+  <action name="alliasing">
+   <property name="text">
+    <string>Alliasing</string>
+   </property>
+  </action>
+  <action name="shiftingArtifact">
+   <property name="text">
+    <string>Shifting Artifact</string>
    </property>
   </action>
  </widget>

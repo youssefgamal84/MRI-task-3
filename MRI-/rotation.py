@@ -1,8 +1,6 @@
 import numpy as np
 from math import sin, cos, pi
 
-
-
 def rotateX(matrix, FA):
     FA = FA * (pi / 180)
     cosFA = cos(FA)

@@ -120,7 +120,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
                 print(np.shape(self.T1))
                 self.T2 = mat[2 * row:3 * row + 1]
                 print(np.shape(self.T2))
-                self.showPhantomImage()
+                self.showPhantomImage(self.PD)
             except (IOError, SyntaxError):
                 self.error('Check File Extension')
 
@@ -423,7 +423,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
             self.sinFA = sin(self.FA * pi / 180)
         except:
             self.error("FA must be a number")
-
+ 
     def setTE(self, value):
         print(value)
         try:
