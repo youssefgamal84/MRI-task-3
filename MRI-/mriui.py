@@ -103,7 +103,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
-        self.kspaceLbl = QtWidgets.QLabel(self.tabKspace)
+        self.kspaceLbl = myLabel(self.tabKspace)
         self.kspaceLbl.setMinimumSize(QtCore.QSize(128, 128))
         self.kspaceLbl.setMouseTracking(True)
         self.kspaceLbl.setFrameShape(QtWidgets.QFrame.Box)
